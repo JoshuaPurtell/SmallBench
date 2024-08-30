@@ -26,7 +26,7 @@ add GROQ_API_KEY and any other API keys supported by the [apropos-ai](https://gi
 
 Then, run the test script:
 ```
-uvp -m src.smallbench.benchmarks.bcb_a.test
+uv run python -m src.smallbench.benchmarks.bcb_a.test
 ```
 
 ## Medium Benchmarks
@@ -45,5 +45,5 @@ TBD
 ### BigCodeBench - Agent Harness
 | LM | Score (out of 1) |
 | --- | --- |
-| 4o | ??? |
-| 4o-mini | ??? |
+| 4o-mini | 0.4 |
+| deepseek-coder | 0.1 |
