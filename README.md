@@ -20,7 +20,7 @@ This benchmark provides a stateful environment for lm-based agents to solve codi
 
 Please see the [BigCodeBench](https://bigcode-bench.github.io) page for more information about the underlying dataset.
 
-### Get Started
+#### Get Started
 add GROQ_API_KEY and any other API keys supported by the [apropos-ai](https://github.com/JoshuaPurtell/Apropos) library to the .env file.
 - Note: Groq, Google, and possibly other providers offer free tiers.
 
