@@ -4,6 +4,10 @@ Small, simple agent task environments for training and evaluation.
 
 Designed to challenge lm-agents with a broad range of capabilities.
 
+<p align="middle">
+  <img src="https://raw.githubusercontent.com/JoshuaPurtell/SmallBench/main/assets/data_science.gif" width="200" />
+</p>
+
 ## Spinning Up
 ```
 uv venv smallbench-dev
