@@ -4,6 +4,10 @@ Small, simple agent task environments for training and evaluation.
 
 Designed to challenge lm-agents with a broad range of capabilities.
 
+<p align="middle">
+  <img src="https://raw.githubusercontent.com/JoshuaPurtell/SmallBench/main/assets/data_science.gif" width="200" />
+</p>
+
 ## Spinning Up
 ```
 uv venv smallbench-dev
@@ -26,7 +30,7 @@ add GROQ_API_KEY and any other API keys supported by the [apropos-ai](https://gi
 
 Then, run the test script:
 ```
-uv run python -m src.smallbench.benchmarks.bcb_a.test
+uvp -m src.smallbench.benchmarks.bcb_a.test
 ```
 
 ## Medium Benchmarks
@@ -45,5 +49,5 @@ TBD
 ### BigCodeBench - Agent Harness
 | LM | Score (out of 1) |
 | --- | --- |
-| 4o-mini | 0.4 |
-| deepseek-coder | 0.1 |
+| 4o | ??? |
+| 4o-mini | ??? |
