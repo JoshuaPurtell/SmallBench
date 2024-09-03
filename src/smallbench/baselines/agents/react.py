@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any
 from apropos import LLM
 from smallbench.baselines.agents.core import Agent
+from apropos.src.core.lms.cost import CostMonitor
 
 REACT_LOOKBACK = 5
 
@@ -19,9 +20,11 @@ class SimpleReActLanguageAgent(Agent):
     react_history: List[Dict]
     lm: LLM
     contexts: List[Dict]
+    cost_monitor: CostMonitor
 
     def __init__(self, lm: LLM, contexts: List[Dict]):
         self.lm = lm
+        self.cost_monitor = CostMonitor(model_name=lm.model_name)
         self.obs_history = []
         self.react_history = []
         self.contexts = contexts
@@ -81,6 +84,7 @@ Your next actions / thought: """
             user_prompt=user_message,
             response_model=ReAct,
         )
+        self.cost_monitor.update_token_counts(system_message, user_message, str(react_step.dict()))
 
         self.react_history.append(react_step)
         return react_step.action, react_step.action_args
