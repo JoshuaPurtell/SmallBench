@@ -1,7 +1,7 @@
 import asyncio
 import re
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Literal, Type
+from typing import Any, Callable, Dict, List, Literal, Type, Tuple
 import copy
 from pydantic import BaseModel
 
@@ -16,6 +16,10 @@ from smallbench.benchmarks.core import AgentBenchmark
 from smallbench.benchmarks.bcb_a.aci import BCBAgentComputerInterface
 from smallbench.baselines.agents.core import Agent
 
+import ast
+import random
+import matplotlib.pyplot as plt
+import sys
 
 class BCB_AgentBenchmark(AgentBenchmark):
     def __init__(self):
@@ -36,15 +40,19 @@ class BCB_AgentBenchmark(AgentBenchmark):
 
     async def evaluate(
         self, agent: Type[Agent], aci: BCBAgentComputerInterface, verbose: bool = False
-    ):
+    ) -> Tuple[bool, str]:
         if verbose:
             print("Spinning up agent...")
         observation = self.get_observation(None, aci)
         agent.add_observation(observation)
+        import time
         for i in range(10):
             action, action_args = await agent.act()
+            time.sleep(1)
             if verbose:
-                print(f"- {action}")
+                print(f"- Action: {action}")
+                if action in ["test_submission", "submit_solution"]:
+                    print("Spinning up docker container...")
             try:
                 result = await aci.accept_delta(action, action_args)
             except Exception as e:
@@ -69,7 +77,11 @@ class BCB_AgentBenchmark(AgentBenchmark):
                 if aci.final_success
                 else "\033[91mFailed\033[0m"
             )
-        return aci.final_success
+        dollars = None
+        if hasattr(agent, "cost_monitor"):
+            dollars, tokens = agent.cost_monitor.final_cost()
+            print(f"Cost: ${dollars} for {tokens} tokens")
+        return aci.final_success, aci.final_submission, dollars
 
     async def score_agent(
         self,
@@ -92,10 +104,14 @@ class BCB_AgentBenchmark(AgentBenchmark):
             backend = BCBEngine(question)
             aci = BCBAgentComputerInterface(backend)
             try:
-                return await self.evaluate(agent, aci, verbose=verbose)
+                success, submission, dollars = await self.evaluate(agent, aci, verbose)
+
+                return success, dollars
             except Exception as e:
-                print("\033[91mError: " + str(e)[0:30] + "....\033[0m")
+                print("\033[91mError: " + str(e)[0:300] + "....\033[0m")
                 return False
 
-        successes = await asyncio.gather(*[evaluate_question(q) for q in questions])
-        return sum(successes) / len(successes)
+        successes_with_dollars = await asyncio.gather(*[evaluate_question(q) for q in questions])
+        successes = [s for s,d in successes_with_dollars]
+        dollars = sum([d for s,d in successes_with_dollars])
+        return sum(successes) / len(successes), dollars
