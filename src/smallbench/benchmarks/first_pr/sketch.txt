@@ -1,0 +1,9 @@
+Scrape PRs from small repos, then post-process them like this:
+- Identify intent
+- Identify natural scope
+- Turn scope into 3 scopes: small, medium, large
+- One PR for each -> planned, executed, tests created
+
+Filtering github repos
+- check for recent activity
+- screen for code quality / code that works?
