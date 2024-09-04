@@ -2,10 +2,10 @@
 
 Small, simple agent task environments for training and evaluation.
 
-Designed to challenge lm-agents with a broad range of capabilities.
+Designed to challenge a broad spectrum of lm-agent abilities.
 
 <p align="middle">
-  <img src="https://raw.githubusercontent.com/JoshuaPurtell/SmallBench/main/assets/data_science.gif" width="200" />
+  <img src="https://raw.githubusercontent.com/JoshuaPurtell/SmallBench/main/assets/data_science_small.gif" width="200" />
 </p>
 
 ## Spinning Up
@@ -27,6 +27,8 @@ Please see the [BigCodeBench](https://bigcode-bench.github.io) page for more inf
 #### Get Started
 add GROQ_API_KEY and any other API keys supported by the [apropos-ai](https://github.com/JoshuaPurtell/Apropos) library to the .env file.
 - Note: Groq, Google, and possibly other providers offer free tiers.
+
+If you use a Docker backend, ensure you have the Docker app running. If you use Modal, please add all necessary credentials.
 
 Then, run the test script:
 ```
