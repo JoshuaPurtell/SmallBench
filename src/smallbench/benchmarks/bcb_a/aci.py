@@ -6,7 +6,9 @@ from typing import Any, Callable, Dict, List, Literal, Type, Tuple
 from pydantic import BaseModel
 
 from apropos.src.bench.bigcodebench.backends.docker import execute_code_remotely_docker
-from apropos.src.bench.bigcodebench.backends.modal import execute_code_remotely_modal # change to execute_code_remotely_modal asap
+from apropos.src.bench.bigcodebench.backends.modal import (
+    execute_code_remotely_modal,
+)  # change to execute_code_remotely_modal asap
 from apropos.src.bench.bigcodebench.main import (
     BigCodeBench_Question,
     BigCodeBenchComplete_Benchmark,
@@ -25,15 +27,23 @@ from smallbench.core.aci import AgentComputerInterface
 
 class BCBUnitTest(BaseModel):
     test_description: str
-    input_definitions: Dict[str, str]
+    # input_definitions: Dict[str, str]
+    input_names: List[str]
+    input_types: List[str]
+    input_values: List[Any]
     assertion_condition: str
     assertion_type: Literal["assertTrue", "assertRaises"] = "assertTrue"
 
     def to_python(self, index: int, function_name: str = "task_func"):
         definitions = []
         arguments = {}
-        for i, (input_name, input_value) in enumerate(self.input_definitions.items()):
-            definitions.append(f"var_{i} = {input_value}")
+        for i, (input_name, input_type, input_value) in enumerate(
+            zip(self.input_names, self.input_types, self.input_values)
+        ):
+            if not input_type == "str":
+                definitions.append(f"var_{i} = {input_value}")
+            else:
+                definitions.append(f"var_{i} = '{input_value}'")
             arguments[input_name] = f"var_{i}"
         args = ", ".join([f""""{k}":{v}""" for k, v in arguments.items()])
         defs = "\n        ".join(definitions)
@@ -83,11 +93,15 @@ class BCBEngine:
         all_unique_imports, imports_snippet = self.get_imports()
         if self.backend == "docker":
             success, result = await execute_code_remotely_docker(
-                    self.bcb_question.information, final_submission, packages = all_unique_imports
-            )#TODO: combine this and the unit testing code ASAP
+                self.bcb_question.information,
+                final_submission,
+                packages=all_unique_imports,
+            )  # TODO: combine this and the unit testing code ASAP
         elif self.backend == "modal":
             success, result = await execute_code_remotely_modal(
-                self.bcb_question.information, final_submission, packages = all_unique_imports
+                self.bcb_question.information,
+                final_submission,
+                packages=all_unique_imports,
             )
         else:
             raise ValueError(f"Invalid backend: {self.backend}")
@@ -113,6 +127,7 @@ class BCBEngine:
         standard_libs = set(sys.stdlib_module_names)
         all_unique_imports = [imp for imp in head_imports if imp not in standard_libs]
         return all_unique_imports, imports_snippet
+
     async def execute_submission_against_tests(
         self, headless_submission: str, tests: List[BCBUnitTest]
     ):  # Write new docker code for this
@@ -123,8 +138,12 @@ import unittest
 {imports_snippet}
 class TestCases(unittest.TestCase):
 """
+        print("Tests:")
+        assert len(tests) > 0, "No tests found"
         for i, test in enumerate(tests):
             tests_snippet += test.to_python(index=i)
+        print("Tests snippet:")
+        assert len(tests_snippet) > 0, "Tests snippet is empty"
 
         full_script = (
             self.bcb_question.information["eval_info"]["code_prompt"]
@@ -138,7 +157,7 @@ class TestCases(unittest.TestCase):
         elif self.backend == "docker":
             location = "/app"
         else:
-            raise Exception("Broken")
+            raise Exception("Invalid backend")
         eval_snippet = f"""
 import unittest
 import io
@@ -171,11 +190,9 @@ if __name__ == "__main__":
                 packages=all_unique_imports,
                 dir_name="bcb",
             )
-            #print(type(results))
-            #print(results)
             logs_pattern = r"([\s\S]*?)(?=Success:)"
             test_results_pattern = r"Success: (True|False)\s*(\{.*\})"
-            
+
             logs_match = re.search(logs_pattern, results, re.DOTALL)
             test_results_match = re.search(test_results_pattern, results, re.DOTALL)
             if logs_match and test_results_match:
@@ -187,10 +204,14 @@ if __name__ == "__main__":
                 logs = ""
                 success = False
                 test_results = {}
-            success = success and test_results["wasSuccessful"] and test_results["testsRun"] > 0
+            success = (
+                success
+                and test_results["wasSuccessful"]
+                and test_results["testsRun"] > 0
+            )
             if success:
                 result = "All tests passed"
-            elif logs=="":
+            elif logs == "":
                 result = "Running tests resulted in an execution hardfail"
             else:
                 result = f"Not all tests passed. Results summary: {test_results}. \nExecution logs: {logs}"
@@ -246,7 +267,9 @@ class BCBAgentComputerInterface(AgentComputerInterface):
                 action_context=f"""Add a unit test. The unit test information you submit must be in the format of a BCBUnitTest: \n
 class BCBUnitTest(BaseModel):
     test_description: str
-    input_definitions: Dict[str, Any]
+    input_names: List[str]
+    input_types: List[str]
+    input_values: List[Any]
     assertion_condition: str
     assertion_type: Literal["assertTrue", "assertRaises"] = "assertTrue"
 \n\n It will be parsed via BCBUnitTest(**unit_test_dict)
@@ -317,6 +340,7 @@ class BCBUnitTest(BaseModel):
             return "Added unit test successfully"
         except Exception as e:
             return f"Failed to add unit test: {e}"
+
     def remove_unit_test(self, unit_test_name: str):
         try:
             self.unit_tests.pop(unit_test_name)
