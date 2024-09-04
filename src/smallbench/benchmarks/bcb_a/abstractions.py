@@ -55,12 +55,10 @@ class ACIAction(BaseModel):
             await self.validate_action_args(action_args)
         except Exception as e:
             return ActionResult(success=False, result=str(e))
-        
+
         if self.transform.type == "async":
             result = await self.transform.callable(**action_args)
             return ActionResult(success=True, result=result)
         else:
             result = self.transform.callable(**action_args)
-            return ActionResult(
-                success=True, result=result
-            )
+            return ActionResult(success=True, result=result)

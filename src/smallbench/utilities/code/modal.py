@@ -22,7 +22,7 @@ async def execute_code_modal(
             install_command = ""
             if packages:
                 install_command = f"pip install {' '.join(packages)} && "
-            image = modal.Image.debian_slim(python_version = python_version)
+            image = modal.Image.debian_slim(python_version=python_version)
             sb = modal.Sandbox.create(
                 "bash",
                 "-c",

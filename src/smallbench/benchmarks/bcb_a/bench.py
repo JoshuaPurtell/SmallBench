@@ -42,7 +42,11 @@ class BCB_AgentBenchmark(AgentBenchmark):
         }
 
     async def evaluate(
-        self, agent: Type[Agent], aci: BCBAgentComputerInterface, verbose: bool = False, max_agent_steps: int = 10
+        self,
+        agent: Type[Agent],
+        aci: BCBAgentComputerInterface,
+        verbose: bool = False,
+        max_agent_steps: int = 10,
     ) -> Tuple[bool, str]:
         if verbose:
             print("Spinning up agent...")
@@ -57,7 +61,7 @@ class BCB_AgentBenchmark(AgentBenchmark):
                 print(f"- Action: {action}")
                 if action in ["test_submission", "submit_solution"]:
                     print("Spinning up container...")
-            #result = await aci.accept_delta(action, action_args)
+            # result = await aci.accept_delta(action, action_args)
             try:
                 result = await aci.accept_delta(action, action_args)
             except Exception as e:
