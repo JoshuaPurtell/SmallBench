@@ -22,7 +22,8 @@ import matplotlib.pyplot as plt
 import sys
 
 class BCB_AgentBenchmark(AgentBenchmark):
-    def __init__(self):
+    def __init__(self, backend: Literal["docker", "modal"] = "docker"):
+        self.backend = backend
         self.bcb_benchmark = BigCodeBenchComplete_Benchmark()
 
     def get_observation(self, action_result, aci: BCBAgentComputerInterface):
@@ -101,7 +102,7 @@ class BCB_AgentBenchmark(AgentBenchmark):
 
         async def evaluate_question(question):
             agent = copy.deepcopy(base_agent)
-            backend = BCBEngine(question)
+            backend = BCBEngine(question, self.backend)
             aci = BCBAgentComputerInterface(backend)
             try:
                 success, submission, dollars = await self.evaluate(agent, aci, verbose)

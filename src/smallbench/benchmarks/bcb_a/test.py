@@ -46,10 +46,14 @@ if __name__ == "__main__":
 
     model = "gpt-4o-mini-2024-07-18"#claude-3-5-sonnet-20240620
 
-    benchmark = BigCodeBenchComplete_Benchmark()
+    benchmark = BigCodeBenchComplete_Benchmark(
+        
+    )
     contexts = get_contexts_extremely_hacky_please_fix()
     agent = SimpleReActLanguageAgent(lm=LLM(model), contexts=contexts)
-    agent_benchmark = BCB_AgentBenchmark()
+    agent_benchmark = BCB_AgentBenchmark(
+        backend="modal"
+    )
     
     # for i in range(90,100):
         
@@ -61,7 +65,7 @@ if __name__ == "__main__":
 
     agent_performance, agent_cost = asyncio.run(
         agent_benchmark.score_agent(
-            agent, split="train", indices=[i for i in range(20)], verbose=True
+            agent, split="train", indices=[i for i in range(1)], verbose=True
         )
     )
     print(f"Score for {model}: " + str(agent_performance))

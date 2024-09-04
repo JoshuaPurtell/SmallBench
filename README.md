@@ -28,6 +28,8 @@ Please see the [BigCodeBench](https://bigcode-bench.github.io) page for more inf
 add GROQ_API_KEY and any other API keys supported by the [apropos-ai](https://github.com/JoshuaPurtell/Apropos) library to the .env file.
 - Note: Groq, Google, and possibly other providers offer free tiers.
 
+If you use a Docker backend, ensure you have the Docker app running. If you use Modal, please add all necessary credentials.
+
 Then, run the test script:
 ```
 uvp -m src.smallbench.benchmarks.bcb_a.test
