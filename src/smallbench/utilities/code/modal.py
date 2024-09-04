@@ -1,21 +1,19 @@
 import io
-import asyncio
-import docker
-import tempfile
-import os
-from typing import Dict
-import modal
+from typing import Dict, Optional, Tuple
 
+import modal
 
 
 async def execute_code_modal(
     script_to_run_by_name: str,
     scripts_by_name: Dict[str, str],
     dir_name: str,
-    python_version="python:3.9-slim",
+    python_version="3.9",
     packages=None,
-) -> str:
-    print("Running code in modal")
+    verbose=False,
+) -> Tuple[str, Optional[str]]:
+    result = "Modal execution failed"
+    sterror = None
     try:
         with modal.NetworkFileSystem.ephemeral() as nfs:
             for name, script in scripts_by_name.items():
@@ -24,19 +22,26 @@ async def execute_code_modal(
             install_command = ""
             if packages:
                 install_command = f"pip install {' '.join(packages)} && "
-
+            image = modal.Image.debian_slim(python_version = python_version)
             sb = modal.Sandbox.create(
                 "bash",
                 "-c",
                 f"{install_command}cd /vol && python -W ignore {script_to_run_by_name}",
-                image=python_version,
-                timeout=60,
+                image=image,
+                timeout=120,
                 cloud="aws",
                 network_file_systems={"/vol": nfs},
             )
             await sb.wait.aio()
             stdout = await sb.stdout.read.aio()
             stderr = await sb.stderr.read.aio()
-            return stdout
-    except modal.SandboxTimeoutError:
-        return "Execution timed out after 60 seconds"
+            if verbose:
+                print("Results:")
+                print(stdout)
+                print(stderr)
+            result = stdout
+            sterror = stderr
+    except modal.exception.SandboxTimeoutError:
+        result = "Execution timed out after 60 seconds"
+        sterror = None
+    return result, sterror

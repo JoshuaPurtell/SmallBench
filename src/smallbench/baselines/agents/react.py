@@ -84,7 +84,9 @@ Your next actions / thought: """
             user_prompt=user_message,
             response_model=ReAct,
         )
-        self.cost_monitor.update_token_counts(system_message, user_message, str(react_step.dict()))
+        self.cost_monitor.update_token_counts(
+            system_message, user_message, str(react_step.dict())
+        )
 
         self.react_history.append(react_step)
         return react_step.action, react_step.action_args

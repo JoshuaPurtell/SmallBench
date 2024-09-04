@@ -6,6 +6,7 @@ import copy
 from pydantic import BaseModel
 
 from apropos.src.bench.bigcodebench.backends.docker import execute_code_remotely_docker
+from apropos.src.bench.bigcodebench.backends.modal import execute_code_remotely_modal
 from apropos.src.bench.bigcodebench.main import (
     BigCodeBench_Question,
     BigCodeBenchComplete_Benchmark,
@@ -20,6 +21,7 @@ import ast
 import random
 import matplotlib.pyplot as plt
 import sys
+
 
 class BCB_AgentBenchmark(AgentBenchmark):
     def __init__(self, backend: Literal["docker", "modal"] = "docker"):
@@ -40,20 +42,22 @@ class BCB_AgentBenchmark(AgentBenchmark):
         }
 
     async def evaluate(
-        self, agent: Type[Agent], aci: BCBAgentComputerInterface, verbose: bool = False
+        self, agent: Type[Agent], aci: BCBAgentComputerInterface, verbose: bool = False, max_agent_steps: int = 10
     ) -> Tuple[bool, str]:
         if verbose:
             print("Spinning up agent...")
         observation = self.get_observation(None, aci)
         agent.add_observation(observation)
         import time
-        for i in range(10):
+
+        for _ in range(max_agent_steps):
             action, action_args = await agent.act()
             time.sleep(1)
             if verbose:
                 print(f"- Action: {action}")
                 if action in ["test_submission", "submit_solution"]:
-                    print("Spinning up docker container...")
+                    print("Spinning up container...")
+            #result = await aci.accept_delta(action, action_args)
             try:
                 result = await aci.accept_delta(action, action_args)
             except Exception as e:
@@ -106,13 +110,14 @@ class BCB_AgentBenchmark(AgentBenchmark):
             aci = BCBAgentComputerInterface(backend)
             try:
                 success, submission, dollars = await self.evaluate(agent, aci, verbose)
-
                 return success, dollars
             except Exception as e:
                 print("\033[91mError: " + str(e)[0:300] + "....\033[0m")
-                return False
+                return False, 0
 
-        successes_with_dollars = await asyncio.gather(*[evaluate_question(q) for q in questions])
-        successes = [s for s,d in successes_with_dollars]
-        dollars = sum([d for s,d in successes_with_dollars])
+        successes_with_dollars = await asyncio.gather(
+            *[evaluate_question(q) for q in questions]
+        )
+        successes = [s for s, d in successes_with_dollars]
+        dollars = sum([d for s, d in successes_with_dollars])
         return sum(successes) / len(successes), dollars

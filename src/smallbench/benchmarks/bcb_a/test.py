@@ -44,28 +44,17 @@ if __name__ == "__main__":
     from apropos import LLM
     from smallbench.baselines.agents.react import SimpleReActLanguageAgent
 
-    model = "gpt-4o-mini-2024-07-18"#claude-3-5-sonnet-20240620
+    #model = "gpt-4o-mini-2024-07-18"  # claude-3-5-sonnet-20240620
+    model = "gpt-4o-2024-08-06"  # claude-3-5-sonnet-20240620
 
-    benchmark = BigCodeBenchComplete_Benchmark(
-        
-    )
+    benchmark = BigCodeBenchComplete_Benchmark()
     contexts = get_contexts_extremely_hacky_please_fix()
     agent = SimpleReActLanguageAgent(lm=LLM(model), contexts=contexts)
-    agent_benchmark = BCB_AgentBenchmark(
-        backend="modal"
-    )
-    
-    # for i in range(90,100):
-        
-    #     if not benchmark.train[i].information['topic'] in ["Data Science and Analysis"]:
-    #         continue
-    #     print(f"Running {i}...")
-    #     print(benchmark.train[i].information["question"])
-    # raise Exception("Stop here")
+    agent_benchmark = BCB_AgentBenchmark(backend="modal")
 
     agent_performance, agent_cost = asyncio.run(
         agent_benchmark.score_agent(
-            agent, split="train", indices=[i for i in range(1)], verbose=True
+            agent, split="train", indices=[i for i in range(10)], verbose=True
         )
     )
     print(f"Score for {model}: " + str(agent_performance))

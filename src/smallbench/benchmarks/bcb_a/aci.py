@@ -1,17 +1,19 @@
 import asyncio
 import re
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Literal, Type
+from typing import Any, Callable, Dict, List, Literal, Type, Tuple
 
 from pydantic import BaseModel
 
 from apropos.src.bench.bigcodebench.backends.docker import execute_code_remotely_docker
+from apropos.src.bench.bigcodebench.backends.modal import execute_code_remotely_modal # change to execute_code_remotely_modal asap
 from apropos.src.bench.bigcodebench.main import (
     BigCodeBench_Question,
     BigCodeBenchComplete_Benchmark,
 )
-
+import sys
 from smallbench.utilities.code.docker import execute_code_docker
+from smallbench.utilities.code.modal import execute_code_modal
 from smallbench.benchmarks.bcb_a.abstractions import (
     CurrentSolution,
     ACIAction,
@@ -57,10 +59,16 @@ class BCBUnitTest(BaseModel):
 
 
 class BCBEngine:
+    backend: Literal["docker", "modal"] = "docker"
     bcb_question: BigCodeBench_Question
 
-    def __init__(self, bcb_question: BigCodeBench_Question):
+    def __init__(
+        self,
+        bcb_question: BigCodeBench_Question,
+        backend: Literal["docker", "modal"] = "docker",
+    ):
         self.bcb_question = bcb_question
+        self.backend = backend
 
     def temp_code_hack(self, headless_submission: str):
         # TEMP HACK
@@ -72,16 +80,22 @@ class BCBEngine:
 
     async def execute_final_submission_against_hidden_tests(self, final_submission):
         final_submission = self.temp_code_hack(final_submission)
-        success, result = await execute_code_remotely_docker(
-            self.bcb_question.information, final_submission
-        )
+        all_unique_imports, imports_snippet = self.get_imports()
+        if self.backend == "docker":
+            success, result = await execute_code_remotely_docker(
+                    self.bcb_question.information, final_submission, packages = all_unique_imports
+            )#TODO: combine this and the unit testing code ASAP
+        elif self.backend == "modal":
+            success, result = await execute_code_remotely_modal(
+                self.bcb_question.information, final_submission, packages = all_unique_imports
+            )
+        else:
+            raise ValueError(f"Invalid backend: {self.backend}")
+        print("Results for final submission:")
+        print(result)
         return success, result
 
-    async def execute_submission_against_tests(
-        self, headless_submission: str, tests: List[BCBUnitTest]
-    ):  # Write new docker code for this
-        headless_submission = self.temp_code_hack(headless_submission)
-
+    def get_imports(self) -> Tuple[List[str], str]:
         head_imports = re.findall(
             r"import (\w+)", self.bcb_question.information["eval_info"]["code_prompt"]
         )
@@ -96,6 +110,14 @@ class BCBEngine:
                 for imp, alias in head_imports_with_alias
             ]
         )
+        standard_libs = set(sys.stdlib_module_names)
+        all_unique_imports = [imp for imp in head_imports if imp not in standard_libs]
+        return all_unique_imports, imports_snippet
+    async def execute_submission_against_tests(
+        self, headless_submission: str, tests: List[BCBUnitTest]
+    ):  # Write new docker code for this
+        headless_submission = self.temp_code_hack(headless_submission)
+        all_unique_imports, imports_snippet = self.get_imports()
         tests_snippet = f"""
 import unittest
 {imports_snippet}
@@ -111,23 +133,29 @@ class TestCases(unittest.TestCase):
             + "\n"
             + tests_snippet
         )
-        eval_snippet = """
+        if self.backend == "modal":
+            location = "/vol"
+        elif self.backend == "docker":
+            location = "/app"
+        else:
+            raise Exception("Broken")
+        eval_snippet = f"""
 import unittest
 import io
 def test_code():
     path = "script.py"
     loader = unittest.TestLoader()
-    suite = loader.discover('/app', pattern=path)
+    suite = loader.discover('{location}', pattern=path)
     runner = unittest.TextTestRunner()
     assert suite.countTestCases() != 0, "No tests found in script.py"
     result = runner.run(suite)
 
-    result_dict = {
+    result_dict = {{
         "errors": len(result.errors),
         "failures": len(result.failures),
         "testsRun": result.testsRun,
         "wasSuccessful": result.wasSuccessful()
-    }
+    }}
     return result.wasSuccessful(), result_dict
 
 if __name__ == "__main__":
@@ -135,18 +163,51 @@ if __name__ == "__main__":
     print("Success:", success)
     print(result)
 """
-        import sys
-
-        standard_libs = set(sys.stdlib_module_names)
-        all_unique_imports = [imp for imp in head_imports if imp not in standard_libs]
-        results = await execute_code_docker(
-            script_to_run_by_name="eval.py",
-            scripts_by_name={"eval.py": eval_snippet, "script.py": full_script},
-            python_version="python:3.9-slim",
-            packages=all_unique_imports,
-            dir_name="bcb",
-        )
-        return results
+        if self.backend == "docker":
+            results = await execute_code_docker(
+                script_to_run_by_name="eval.py",
+                scripts_by_name={"eval.py": eval_snippet, "script.py": full_script},
+                python_version="python:3.9-slim",
+                packages=all_unique_imports,
+                dir_name="bcb",
+            )
+            #print(type(results))
+            #print(results)
+            logs_pattern = r"([\s\S]*?)(?=Success:)"
+            test_results_pattern = r"Success: (True|False)\s*(\{.*\})"
+            
+            logs_match = re.search(logs_pattern, results, re.DOTALL)
+            test_results_match = re.search(test_results_pattern, results, re.DOTALL)
+            if logs_match and test_results_match:
+                logs = logs_match.group(1).strip()
+                success = test_results_match.group(1) == "True"
+                test_results = eval(test_results_match.group(2))
+            else:
+                print("No match found")
+                logs = ""
+                success = False
+                test_results = {}
+            success = success and test_results["wasSuccessful"] and test_results["testsRun"] > 0
+            if success:
+                result = "All tests passed"
+            elif logs=="":
+                result = "Running tests resulted in an execution hardfail"
+            else:
+                result = f"Not all tests passed. Results summary: {test_results}. \nExecution logs: {logs}"
+            # parse these
+        elif self.backend == "modal":
+            results, sterror = await execute_code_modal(
+                script_to_run_by_name="eval.py",
+                scripts_by_name={"eval.py": eval_snippet, "script.py": full_script},
+                python_version="3.9",
+                packages=all_unique_imports,
+                dir_name="bcb",
+                verbose=True,
+            )
+            result = results
+        else:
+            raise ValueError(f"Invalid backend: {self.backend}")
+        return result
 
 
 class BCBAgentComputerInterface(AgentComputerInterface):
@@ -229,7 +290,8 @@ class BCBUnitTest(BaseModel):
         )
         if action is None:
             raise ValueError(f"Action {action_name} not found")
-        return await action._act(action_args)
+        result = await action._act(action_args)
+        return result
 
     async def _execute_submission_against_tests(self):
         results = await self.bcb_backend.execute_submission_against_tests(
@@ -238,27 +300,44 @@ class BCBUnitTest(BaseModel):
         return results
 
     def edit_submission(self, first_line: int, last_line: int, new_code: str):
+        if not isinstance(new_code, str):
+            return "New code must be a string"
         self.current_solution.lines[first_line:last_line] = new_code.split("\n")
+        return "Edited submission successfully"
 
     def add_submission(self, submission: str):
+        if not isinstance(submission, str):
+            return "Submission must be a string"
         self.current_solution = CurrentSolution(lines=submission.split("\n"))
+        return "Added submission successfully"
 
     def add_unit_test(self, unit_test_name: str, unit_test_dict: Dict):
-        self.unit_tests[unit_test_name] = BCBUnitTest(**unit_test_dict)
-
+        try:
+            self.unit_tests[unit_test_name] = BCBUnitTest(**unit_test_dict)
+            return "Added unit test successfully"
+        except Exception as e:
+            return f"Failed to add unit test: {e}"
     def remove_unit_test(self, unit_test_name: str):
-        self.unit_tests.pop(unit_test_name)
+        try:
+            self.unit_tests.pop(unit_test_name)
+            return "Removed unit test successfully"
+        except Exception as e:
+            return f"Failed to remove unit test: {e}"
 
     async def _submit_solution(self):
         (
-            success,
+            tests_ran,
             result,
         ) = await self.bcb_backend.execute_final_submission_against_hidden_tests(
             self.current_solution.for_execution()
         )
+        if result["testsRun"] == 0:
+            print("Warning: No final tests ran")
+        success = tests_ran and result["wasSuccessful"] and result["testsRun"] > 0
+
         self.final_submission = self.current_solution.for_execution()
         self.final_success = success
-        return success, result
+        return f"Solution submitted successfully, Success: {success}"
 
     def check_termination(self):
-        return self.final_success is not False
+        return self.final_success is not False or self.final_submission is not None
