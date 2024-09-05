@@ -89,7 +89,7 @@ class BCB_AgentBenchmark(AgentBenchmark):
         dollars = None
         if hasattr(agent, "cost_monitor"):
             dollars, tokens = agent.cost_monitor.final_cost()
-            print(f"Cost: ${dollars} for {tokens} tokens")
+            # print(f"Cost: ${dollars} for {tokens} tokens")
         return aci.final_success, aci.final_submission, dollars
 
     async def score_agent(
@@ -112,14 +112,12 @@ class BCB_AgentBenchmark(AgentBenchmark):
             agent = copy.deepcopy(base_agent)
             backend = BCBEngine(question, self.backend)
             aci = BCBAgentComputerInterface(backend)
-            success, submission, dollars = await self.evaluate(agent, aci, verbose)
-            return success, dollars
-            # try:
-            #     success, submission, dollars = await self.evaluate(agent, aci, verbose)
-            #     return success, dollars
-            # except Exception as e:
-            #     print("\033[91mError: " + str(e)[0:300] + "....\033[0m")
-            #     return False, 0
+            try:
+                success, submission, dollars = await self.evaluate(agent, aci, verbose)
+                return success, dollars
+            except Exception as e:
+                print("\033[91mError: " + str(e)[0:300] + "....\033[0m")
+                return False, 0
 
         successes_with_dollars = await asyncio.gather(
             *[evaluate_question(q) for q in questions]

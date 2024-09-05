@@ -223,7 +223,11 @@ if __name__ == "__main__":
                 dir_name="bcb",
                 verbose=True,
             )
-            result = results
+            # Cut down on unnec tokens
+            if "ERROR:" in results:
+                result = "ERROR:"+results.split("ERROR:")[1].strip()
+            else:
+                result = results
         else:
             raise ValueError(f"Invalid backend: {self.backend}")
         return result
