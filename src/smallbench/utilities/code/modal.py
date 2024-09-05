@@ -35,10 +35,17 @@ async def execute_code_modal(
             await sb.wait.aio()
             stdout = await sb.stdout.read.aio()
             stderr = await sb.stderr.read.aio()
-            if verbose:
-                print("Results:")
-                print(stdout)
-                print(stderr)
+            #if verbose:
+                # print("Results:")
+                # print("#"* 20)
+                # print(stdout)
+                # print("---")
+                # print(stderr)
+                # print("---")
+                # print(scripts_by_name)
+                # print("----")
+                # print(packages)
+                # print("#" * 20)
             result = stdout
             sterror = stderr
     except modal.exception.SandboxTimeoutError:

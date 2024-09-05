@@ -105,27 +105,27 @@ class BCBEngine:
             )
         else:
             raise ValueError(f"Invalid backend: {self.backend}")
-        print("Results for final submission:")
-        print(result)
         return success, result
 
     def get_imports(self) -> Tuple[List[str], str]:
-        head_imports = re.findall(
-            r"import (\w+)", self.bcb_question.information["eval_info"]["code_prompt"]
-        )
-        head_imports_with_alias = re.findall(
-            r"import (\w+) as (\w+)",
-            self.bcb_question.information["eval_info"]["code_prompt"],
-        )
+        code_prompt = self.bcb_question.information["eval_info"]["code_prompt"]
+        from_imports = re.findall(r"from (\w+) import (\w+)", code_prompt)
+        head_imports = re.findall(r"^import (\w+)(?!\s+as)$", code_prompt, re.MULTILINE)
+        head_imports_with_alias = re.findall(r"import ([\w.]+) as (\w+)", code_prompt)
         imports_snippet = "\n".join(
             ["import " + imp for imp in head_imports]
-            + [
-                "import " + imp + " as " + alias
-                for imp, alias in head_imports_with_alias
-            ]
+            + [f"import {imp} as {alias}" for imp, alias in head_imports_with_alias]
+            + [f"from {package} import {class_or_function}" for package, class_or_function in from_imports]
         )
         standard_libs = set(sys.stdlib_module_names)
         all_unique_imports = [imp for imp in head_imports if imp not in standard_libs]
+        for imp, _ in head_imports_with_alias:
+            package = imp.split('.')[0]
+            if package not in all_unique_imports and package not in standard_libs:
+                all_unique_imports.append(package)
+        for package, _ in from_imports:
+            if package not in all_unique_imports and package not in standard_libs:
+                all_unique_imports.append(package)
         return all_unique_imports, imports_snippet
 
     async def execute_submission_against_tests(
@@ -138,11 +138,9 @@ import unittest
 {imports_snippet}
 class TestCases(unittest.TestCase):
 """
-        print("Tests:")
         assert len(tests) > 0, "No tests found"
         for i, test in enumerate(tests):
             tests_snippet += test.to_python(index=i)
-        print("Tests snippet:")
         assert len(tests_snippet) > 0, "Tests snippet is empty"
 
         full_script = (
