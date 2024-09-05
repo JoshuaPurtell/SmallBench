@@ -25,6 +25,8 @@ This benchmark provides a stateful environment for lm-based agents to solve codi
 Please see the [BigCodeBench](https://bigcode-bench.github.io) page for more information about the underlying dataset.
 
 #### Get Started
+
+##### Local
 add GROQ_API_KEY and any other API keys supported by the [apropos-ai](https://github.com/JoshuaPurtell/Apropos) library to the .env file.
 - Note: Groq, Google, and possibly other providers offer free tiers.
 
@@ -32,13 +34,20 @@ If you use a Docker backend, ensure you have the Docker app running. If you use 
 
 Then, run the test script:
 ```
-uvp -m src.smallbench.benchmarks.bcb_a.test
+uv run python -m src.smallbench.benchmarks.bcb_a.test
 ```
+
+##### Colab
+Check out the [Colab](https://drive.google.com/file/d/1bPMrS2IhWffeeWWIGAISHzktbJUsAmpX/view?usp=sharing) if you prefer to run the benchmark in the cloud.
+
 
 ## Medium Benchmarks
 TBD
 
 ## Hard Benchmarks
+TBD
+
+## Difficult Benchmarks
 TBD
 
 ## Caveats
@@ -49,7 +58,8 @@ TBD
 ## Scores - Extremely Preliminary
 
 ### BigCodeBench - Agent Harness
-| LM | Score (out of 1) |
-| --- | --- |
-| 4o | ??? |
-| 4o-mini | ??? |
+| LM | Success Rate (out of 100%) | Sample Size |
+| --- | --- | --- |
+| claude-3-5-sonnet-20240620 | ??? | 30 |
+| gpt-4o-2024-08-06 | 10% | 30 |
+| gpt-4o-mini-2024-07-18 | 13.3% | 30 |
