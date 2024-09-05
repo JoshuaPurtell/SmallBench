@@ -44,8 +44,8 @@ if __name__ == "__main__":
     from apropos import LLM
     from smallbench.baselines.agents.react import SimpleReActLanguageAgent
 
-    # model = "gpt-4o-mini-2024-07-18"  # claude-3-5-sonnet-20240620
-    model = "gpt-4o-2024-08-06"  # claude-3-5-sonnet-20240620
+    model = "gpt-4o-mini-2024-07-18"  # claude-3-5-sonnet-20240620
+    #model = "gpt-4o-2024-08-06"  # claude-3-5-sonnet-20240620
 
     benchmark = BigCodeBenchComplete_Benchmark()
     contexts = get_contexts_extremely_hacky_please_fix()
@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
     agent_performance, agent_cost = asyncio.run(
         agent_benchmark.score_agent(
-            agent, split="train", indices=[i for i in range(2)], verbose=False
+            agent, split="train", indices=[i for i in range(10)], verbose=False
         )
     )
     print(f"Score for {model}: " + str(agent_performance))

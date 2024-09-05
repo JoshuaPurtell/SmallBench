@@ -112,12 +112,14 @@ class BCB_AgentBenchmark(AgentBenchmark):
             agent = copy.deepcopy(base_agent)
             backend = BCBEngine(question, self.backend)
             aci = BCBAgentComputerInterface(backend)
-            try:
-                success, submission, dollars = await self.evaluate(agent, aci, verbose)
-                return success, dollars
-            except Exception as e:
-                print("\033[91mError: " + str(e)[0:300] + "....\033[0m")
-                return False, 0
+            success, submission, dollars = await self.evaluate(agent, aci, verbose)
+            return success, dollars
+            # try:
+            #     success, submission, dollars = await self.evaluate(agent, aci, verbose)
+            #     return success, dollars
+            # except Exception as e:
+            #     print("\033[91mError: " + str(e)[0:300] + "....\033[0m")
+            #     return False, 0
 
         successes_with_dollars = await asyncio.gather(
             *[evaluate_question(q) for q in questions]
