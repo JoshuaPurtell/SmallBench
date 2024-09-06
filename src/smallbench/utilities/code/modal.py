@@ -18,15 +18,15 @@ async def execute_code_modal(
         with modal.NetworkFileSystem.ephemeral() as nfs:
             for name, script in scripts_by_name.items():
                 await nfs.write_file.aio(name, io.BytesIO(script.encode()))
-
-            install_command = ""
-            if packages:
-                install_command = f"pip install {' '.join(packages)} && "
             image = modal.Image.debian_slim(python_version=python_version)
+            if packages:
+                image = image.pip_install("uv")
+                package_install_command = " ".join(packages)
+                image = image.run_commands(f"uv pip install --system --compile-bytecode {package_install_command}")
             sb = modal.Sandbox.create(
                 "bash",
                 "-c",
-                f"{install_command}cd /vol && python -W ignore {script_to_run_by_name}",
+                f"cd /vol && python -W ignore {script_to_run_by_name}",
                 image=image,
                 timeout=120,
                 cloud="aws",

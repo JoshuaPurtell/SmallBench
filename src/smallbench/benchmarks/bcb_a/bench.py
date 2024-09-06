@@ -52,14 +52,9 @@ class BCB_AgentBenchmark(AgentBenchmark):
             print("Spinning up agent...")
         observation = self.get_observation(None, aci)
         agent.add_observation(observation)
-        import time
 
         for _ in range(max_agent_steps):
             action, action_args = await agent.act()
-            if verbose:
-                print(f"- Action: {action}")
-                if action in ["test_submission", "submit_solution"]:
-                    print("Spinning up container...")
             try:
                 result = await aci.accept_delta(action, action_args)
             except Exception as e:
@@ -87,7 +82,6 @@ class BCB_AgentBenchmark(AgentBenchmark):
         dollars = None
         if hasattr(agent, "cost_monitor"):
             dollars, tokens = agent.cost_monitor.final_cost()
-            # print(f"Cost: ${dollars} for {tokens} tokens")
         return aci.final_success, aci.final_submission, dollars
 
     async def score_agent(

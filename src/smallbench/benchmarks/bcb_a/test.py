@@ -45,18 +45,22 @@ if __name__ == "__main__":
     from smallbench.baselines.agents.react import SimpleReActLanguageAgent
 
     #model = "gpt-4o-mini-2024-07-18"  # claude-3-5-sonnet-20240620
-    #model = "gpt-4o-2024-08-06"  # claude-3-5-sonnet-20240620
+    model = "gpt-4o-2024-08-06"  # claude-3-5-sonnet-20240620
 
     benchmark = BigCodeBenchComplete_Benchmark()
     contexts = get_contexts_extremely_hacky_please_fix()
     agent = SimpleReActLanguageAgent(lm=LLM(model), contexts=contexts)
     agent_benchmark = BCB_AgentBenchmark(backend="modal")
 
+    import time
+    t0 = time.time()
     agent_performance, agent_cost = asyncio.run(
         agent_benchmark.score_agent(
-            agent, split="train", indices=[i for i in range(30)], verbose=False
+            agent, split="train", indices=[i for i in range(3,4)], verbose=False
         )
     )
+    t1 = time.time()
+    print(f"Time taken: {t1-t0} seconds")
     print(f"Score for {model}: " + str(agent_performance))
     print(f"Cost for {model}: " + str(agent_cost))
     # top is gemini, bottom is DSC
