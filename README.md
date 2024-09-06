@@ -63,3 +63,5 @@ TBD
 | claude-3-5-sonnet-20240620 | ??? | 30 |
 | gpt-4o-2024-08-06 | 10% | 30 |
 | gpt-4o-mini-2024-07-18 | 13.3% | 30 |
+
+Animation credits: [ZZ](https://x.com/mikezangus)
