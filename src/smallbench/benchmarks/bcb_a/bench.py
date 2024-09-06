@@ -56,12 +56,10 @@ class BCB_AgentBenchmark(AgentBenchmark):
 
         for _ in range(max_agent_steps):
             action, action_args = await agent.act()
-            time.sleep(1)
             if verbose:
                 print(f"- Action: {action}")
                 if action in ["test_submission", "submit_solution"]:
                     print("Spinning up container...")
-            # result = await aci.accept_delta(action, action_args)
             try:
                 result = await aci.accept_delta(action, action_args)
             except Exception as e:
