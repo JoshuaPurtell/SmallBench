@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="smallbench",
-    version="0.1.8",
+    version="0.1.10",
     packages=find_packages(),
     install_requires=[
         "apropos-ai==0.1.20",

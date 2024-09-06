@@ -1,6 +1,6 @@
 [project]
 name = "smallbench"
-version = "0.1.8"
+version = "0.1.10"
 description = "Small Benchmarks for LM Agents"
 authors = [{name = "Josh Purtell", email = "jmvpurtell@gmail.com"}]
 license = {text = "MIT"}
