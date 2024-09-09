@@ -5,7 +5,7 @@ setup(
     version="0.1.10",
     packages=find_packages(),
     install_requires=[
-        "apropos-ai==0.1.20",
+        "apropos-ai==0.2.23",
     ],
     author="Josh Purtell",
     author_email="jmvpurtell@gmail.com",

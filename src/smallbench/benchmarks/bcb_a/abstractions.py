@@ -66,4 +66,3 @@ class ACIAction(BaseModel):
 
         result = await self.transform.callable(**action_args)
         return ActionResult(success=True, result=result)
-

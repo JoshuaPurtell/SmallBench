@@ -3,7 +3,7 @@ import asyncio
 import docker
 import tempfile
 import os
-from typing import Dict
+from typing import Dict, Optional, Tuple
 
 
 def execute_code_docker(
@@ -12,7 +12,8 @@ def execute_code_docker(
     dir_name: str,
     python_version="python:3.9-slim",
     packages=None,
-) -> str:
+    container: Optional[docker.models.containers.Container] = None,
+) -> Tuple[str, docker.models.containers.Container]:
     assert (
         script_to_run_by_name in scripts_by_name
     ), "script_to_run_by_name must be in scripts_by_name"
@@ -28,16 +29,22 @@ def execute_code_docker(
         if packages:
             install_command = f"pip install {' '.join(packages)} && "
 
-        container = client.containers.run(
-            python_version,
-            command=f"/bin/bash -c '{install_command}python -W ignore /app/{script_to_run_by_name}'",
-            volumes={temp_dir: {"bind": "/app", "mode": "ro"}},
-            detach=True,
-        )
+        if container is None:
+            container = client.containers.run(
+                python_version,
+                command=f"/bin/bash -c '{install_command}python -W ignore /app/{script_to_run_by_name}'",
+                volumes={temp_dir: {"bind": "/app", "mode": "ro"}},
+                detach=True,
+            )
+        else:
+            container.exec_run(
+                f"/bin/bash -c '{install_command}python -W ignore /app/{script_to_run_by_name}'"
+            )
 
         try:
             container.wait(timeout=60)
             logs = container.logs().decode("utf-8")
         finally:
-            container.remove()
-    return logs
+            pass
+        #     container.remove()
+    return logs, container

@@ -22,7 +22,9 @@ async def execute_code_modal_async(
             if packages:
                 image = image.pip_install("uv")
                 package_install_command = " ".join(packages)
-                image = image.run_commands(f"uv pip install --system --compile-bytecode {package_install_command}")
+                image = image.run_commands(
+                    f"uv pip install --system --compile-bytecode {package_install_command}"
+                )
             sb = modal.Sandbox.create(
                 "bash",
                 "-c",
@@ -42,6 +44,7 @@ async def execute_code_modal_async(
         sterror = None
     return result, sterror
 
+
 def execute_code_modal_sync(
     script_to_run_by_name: str,
     scripts_by_name: Dict[str, str],
@@ -60,7 +63,9 @@ def execute_code_modal_sync(
             if packages:
                 image = image.pip_install("uv")
                 package_install_command = " ".join(packages)
-                image = image.run_commands(f"uv pip install --system --compile-bytecode {package_install_command}")
+                image = image.run_commands(
+                    f"uv pip install --system --compile-bytecode {package_install_command}"
+                )
             sb = modal.Sandbox.create(
                 "bash",
                 "-c",

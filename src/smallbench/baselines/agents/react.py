@@ -21,13 +21,15 @@ class SimpleReActLanguageAgent(Agent):
     lm: LLM
     contexts: List[Dict]
     cost_monitor: CostMonitor
+    multi_threaded: bool = False
 
-    def __init__(self, lm: LLM, contexts: List[Dict]):
+    def __init__(self, lm: LLM, contexts: List[Dict], multi_threaded: bool = False):
         self.lm = lm
         self.cost_monitor = CostMonitor(model_name=lm.model_name)
         self.obs_history = []
         self.react_history = []
         self.contexts = contexts
+        self.multi_threaded = multi_threaded
 
     def load_context(self, contexts: List[Dict]):
         self.contexts = contexts
@@ -47,10 +49,11 @@ class SimpleReActLanguageAgent(Agent):
         actions_snippet = ""
         for action_name, action_info in self.contexts["actions"].items():
             action_info_snippet = "".join(
-                f"<{key}>\n{value}\n</{key}>\n"
-                for key, value in action_info.items()
+                f"<{key}>\n{value}\n</{key}>\n" for key, value in action_info.items()
             )
-            actions_snippet += f"<{action_name}>\n{action_info_snippet}\n</{action_name}>\n"
+            actions_snippet += (
+                f"<{action_name}>\n{action_info_snippet}\n</{action_name}>\n"
+            )
 
         system_message = f"""
 # Premise
@@ -95,14 +98,7 @@ Your response: """
                 system_prompt=system_message,
                 user_prompt=user_message,
                 response_model=ReactResponse,
-
             )
-            # print("System:")
-            # print(system_message)
-            # print("User:")
-            # print(user_message)
-            # print("Response:")
-            #print(react_step.reasoning)
             if "'await'" in react_step.reasoning:
                 raise Exception("ReAct agent found a coroutine error")
         except Exception as e:
@@ -119,15 +115,8 @@ Your response: """
                 system_prompt=system_message,
                 user_prompt=user_message,
                 response_model=ReactResponse,
+                multi_threaded=self.multi_threaded,
             )
-            # print("System:")
-            # print(system_message)
-            # print("User:")
-            # print(user_message)
-            # print("Response:")
-            # print(react_step.reasoning)
-            if "'await'" in react_step.reasoning:
-                raise Exception("ReAct agent found a coroutine error")
         except Exception as e:
             print(f"Error: {e}")
             print(f"System message: {system_message}")

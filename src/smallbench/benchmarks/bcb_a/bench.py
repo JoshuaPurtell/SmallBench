@@ -4,10 +4,17 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Literal, Type, Tuple
 import copy
 from pydantic import BaseModel
-import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
+import math
 
-from apropos.src.bench.bigcodebench.backends.docker import execute_code_remotely_docker_sync
-from apropos.src.bench.bigcodebench.backends.modal import execute_code_remotely_modal_sync, execute_code_remotely_modal_async
+from apropos.src.bench.bigcodebench.backends.docker import (
+    execute_code_remotely_docker_sync,
+)
+from apropos.src.bench.bigcodebench.backends.modal import (
+    execute_code_remotely_modal_sync,
+    execute_code_remotely_modal_async,
+)
 from apropos.src.bench.bigcodebench.main import (
     BigCodeBench_Question,
     BigCodeBenchComplete_Benchmark,
@@ -56,12 +63,13 @@ class BCB_AgentBenchmark(AgentBenchmark):
 
         for _ in range(max_agent_steps):
             action, action_args = await agent.act_async()
+
             try:
                 action_synchronicity = next(
                     (a for a in aci.actions if a.action_name == action),
                     None,
                 ).transform.type
-                if action_synchronicity=="async":
+                if action_synchronicity == "async":
                     result = await aci.accept_delta_async(action, action_args)
                 else:
                     result = aci.accept_delta_sync(action, action_args)
@@ -93,8 +101,9 @@ class BCB_AgentBenchmark(AgentBenchmark):
         if hasattr(agent, "cost_monitor"):
             dollars, tokens = agent.cost_monitor.final_cost()
         return aci.final_success, aci.final_submission, dollars
-    
-    def evaluate_sync(self,
+
+    def evaluate_sync(
+        self,
         agent: Type[Agent],
         aci: BCBAgentComputerInterface,
         verbose: bool = False,
@@ -110,7 +119,6 @@ class BCB_AgentBenchmark(AgentBenchmark):
             try:
                 result = aci.accept_delta_sync(action, action_args)
             except Exception as e:
-                raise e
                 result = f"""Action failed. Information: 
 <action>
 {action}
@@ -136,13 +144,14 @@ class BCB_AgentBenchmark(AgentBenchmark):
         if hasattr(agent, "cost_monitor"):
             dollars, tokens = agent.cost_monitor.final_cost()
         return aci.final_success, aci.final_submission, dollars
-    
+
     async def score_agent_async(
         self,
         base_agent,
         split: Literal["train", "dev", "test"] = "test",
         indices: List[int] = None,
         verbose: bool = False,
+        use_persistent_container: bool = False,
     ):
         questions = self.bcb_benchmark.get_questions(
             split=split,
@@ -155,9 +164,15 @@ class BCB_AgentBenchmark(AgentBenchmark):
 
         async def evaluate_question(question):
             agent = copy.deepcopy(base_agent)
-            backend = BCBEngine(question, self.backend)
+            backend = BCBEngine(
+                question,
+                self.backend,
+                use_persistent_container=use_persistent_container,
+            )
             aci = BCBAgentComputerInterface(backend, synchronous=False)
-            success, submission, dollars = await self.evaluate_async(agent, aci, verbose)
+            success, submission, dollars = await self.evaluate_async(
+                agent, aci, verbose
+            )
             return success, dollars
 
         successes_with_dollars = await asyncio.gather(
@@ -168,13 +183,14 @@ class BCB_AgentBenchmark(AgentBenchmark):
         print("Successes: ", sum(successes))
         dollars = sum([d for s, d in successes_with_dollars])
         return sum(successes) / len(successes), dollars
-    
+
     def score_agent_sync(
         self,
         base_agent,
         split: Literal["train", "dev", "test"] = "test",
         indices: List[int] = None,
         verbose: bool = False,
+        use_persistent_container: bool = False,
     ):
         questions = self.bcb_benchmark.get_questions(
             split=split,
@@ -187,16 +203,32 @@ class BCB_AgentBenchmark(AgentBenchmark):
 
         def evaluate_question(question):
             agent = copy.deepcopy(base_agent)
-            backend = BCBEngine(question, self.backend)
+            backend = BCBEngine(
+                question,
+                self.backend,
+                use_persistent_container=use_persistent_container,
+            )
             aci = BCBAgentComputerInterface(backend, synchronous=True)
             success, submission, dollars = self.evaluate_sync(agent, aci, verbose)
             return success, dollars
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            successes_with_dollars = list(executor.map(evaluate_question, questions))
+        num_cpus = os.cpu_count()
+        batch_size = max(1, num_cpus - 1)
+        num_batches = math.ceil(len(questions) / batch_size)
+        print("N batches: ", num_batches)
+        print("N questions: ", len(questions))
+        successes_with_dollars = []
+        with ThreadPoolExecutor(max_workers=batch_size) as executor:
+            for i in range(num_batches):
+                start = i * batch_size
+                end = min((i + 1) * batch_size, len(questions))
+                batch_questions = questions[start:end]
+                futures = [
+                    executor.submit(evaluate_question, q) for q in batch_questions
+                ]
+                for future in as_completed(futures):
+                    successes_with_dollars.append(future.result())
 
         successes = [s for s, d in successes_with_dollars]
-        print("Length of successes: ", len(successes))
-        print("Successes: ", sum(successes))
         dollars = sum([d for s, d in successes_with_dollars])
         return sum(successes) / len(successes), dollars

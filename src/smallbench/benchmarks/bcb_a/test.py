@@ -6,7 +6,9 @@ import copy
 from matplotlib import backend_bases
 from pydantic import BaseModel
 
-from apropos.src.bench.bigcodebench.backends.docker import execute_code_remotely_docker_sync
+from apropos.src.bench.bigcodebench.backends.docker import (
+    execute_code_remotely_docker_sync,
+)
 from apropos.src.bench.bigcodebench.main import (
     BigCodeBench_Question,
     BigCodeBenchComplete_Benchmark,
@@ -22,7 +24,7 @@ from smallbench.benchmarks.bcb_a.bench import BCB_AgentBenchmark
 def get_contexts_extremely_hacky_please_fix():
     benchmark = BigCodeBenchComplete_Benchmark()
     question = benchmark.train[0]
-    backend = BCBEngine(question)
+    backend = BCBEngine(question, backend="docker", use_persistent_container=False)
     aci = BCBAgentComputerInterface(backend, synchronous=True)
     contexts = {
         "premise": "You are a software engineer",
@@ -49,7 +51,7 @@ async def test_gold_on_split(split: str = "train", indices: List[int] = None):
         questions = bcb.dev
     elif split == "test":
         questions = bcb.test
-    
+
     questions = [questions[i] for i in indices]
 
     async def score_gold(question: BigCodeBench_Question):
@@ -70,21 +72,26 @@ async def test_gold_on_split(split: str = "train", indices: List[int] = None):
     print(f"Num correct for {split}: {np.sum(gold_scores)}")
     print(f"Num total for {split}: {len(gold_scores)}")
 
+
 if __name__ == "__main__":
     from apropos import LLM
     from smallbench.baselines.agents.react import SimpleReActLanguageAgent
-    
-    #asyncio.run(test_gold_on_split(split="train", indices=[i for i in range(0,20)]))
-    #print("Done with gold")
+
+    # asyncio.run(test_gold_on_split(split="train", indices=[i for i in range(0,20)]))
+    # print("Done with gold")
     backend = "docker"
     model = "gpt-4o-2024-08-06"
-    #model = "gpt-4o-mini-2024-07-18"  # claude-3-5-sonnet-20240620
-    #model = "gpt-4o-mini-2024-07-18"  # claude-3-5-sonnet-20240620
-
+    # model = "gpt-4o-mini-2024-07-18"  # claude-3-5-sonnet-20240620
+    # model = "gpt-4o-mini-2024-07-18"  # claude-3-5-sonnet-20240620
 
     benchmark = BigCodeBenchComplete_Benchmark()
     contexts = get_contexts_extremely_hacky_please_fix()
-    agent = SimpleReActLanguageAgent(lm=LLM(model), contexts=contexts)
+    sync_agent = SimpleReActLanguageAgent(
+        lm=LLM(model), contexts=contexts, multi_threaded=True
+    )
+    async_agent = SimpleReActLanguageAgent(
+        lm=LLM(model), contexts=contexts, multi_threaded=False
+    )
     agent_benchmark = BCB_AgentBenchmark(backend=backend)
 
     import time
@@ -92,24 +99,26 @@ if __name__ == "__main__":
     t0 = time.time()
     agent_performance, agent_cost = asyncio.run(
         agent_benchmark.score_agent_async(
-            agent, split="train", indices=[i for i in range(0,2)], verbose=False
+            async_agent, split="train", indices=[i for i in range(0, 20)], verbose=False
         )
     )
-    # Score for gemini-1.5-flash-latest: 0.06
-    # Score for gpt-4o-mini-2024-07-18: 0.08
-    # Seems rather low?
-    # t1 = time.time()
-    # print(f"Time taken: {t1-t0} seconds")
-    # print(f"Score for {model}: " + str(agent_performance))
-    # print(f"Cost for {model}: " + str(agent_cost))
 
-    print("Starting sync")
-    t0 = time.time()
-    agent_performance, agent_cost = agent_benchmark.score_agent_sync(
-        agent, split="train", indices=[i for i in range(0,2)], verbose=False
-    )
+    print("Agent performance: ", agent_performance)
     t1 = time.time()
     print(f"Time taken: {t1-t0} seconds")
     print(f"Score for {model}: " + str(agent_performance))
     print(f"Cost for {model}: " + str(agent_cost))
+
+    # print("Starting sync")
+    # t0 = time.time()
+    # agent_performance, agent_cost = agent_benchmark.score_agent_sync(
+    #     sync_agent, split="train", indices=[i for i in range(0,20)], verbose=False, use_persistent_container=False
+    # )
+    # t1 = time.time()
+    # print(f"Time taken: {t1-t0} seconds")
+    # print(f"Score for {model}: " + str(agent_performance))
+    # print(f"Cost for {model}: " + str(agent_cost))
     # top is gemini, bottom is DSC
+
+    # Time taken: 43.29315996170044 seconds w/o persistent container for 5 runs in parallel
+    # 160.38296794891357 to run 20 in parallel, syn
