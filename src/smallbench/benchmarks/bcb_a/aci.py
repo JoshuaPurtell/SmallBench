@@ -5,9 +5,10 @@ from typing import Any, Callable, Dict, List, Literal, Type, Tuple
 
 from pydantic import BaseModel
 
-from apropos.src.bench.bigcodebench.backends.docker import execute_code_remotely_docker
+from apropos.src.bench.bigcodebench.backends.docker import execute_code_remotely_docker_sync
 from apropos.src.bench.bigcodebench.backends.modal import (
-    execute_code_remotely_modal,
+    execute_code_remotely_modal_async,
+    execute_code_remotely_modal_sync,
 )  # change to execute_code_remotely_modal asap
 from apropos.src.bench.bigcodebench.main import (
     BigCodeBench_Question,
@@ -15,7 +16,7 @@ from apropos.src.bench.bigcodebench.main import (
 )
 import sys
 from smallbench.utilities.code.docker import execute_code_docker
-from smallbench.utilities.code.modal import execute_code_modal
+from smallbench.utilities.code.modal import execute_code_modal_async, execute_code_modal_sync
 from smallbench.benchmarks.bcb_a.abstractions import (
     CurrentSolution,
     ACIAction,
@@ -23,6 +24,7 @@ from smallbench.benchmarks.bcb_a.abstractions import (
 )
 from smallbench.benchmarks.bcb_a.contexts import unit_test_context
 from smallbench.core.aci import AgentComputerInterface
+from abc import ABC, abstractmethod
 
 
 class BCBUnitTest(BaseModel):
@@ -67,11 +69,49 @@ class BCBUnitTest(BaseModel):
         else:
             raise ValueError(f"Invalid assertion type: {self.assertion_type}")
 
+class BCBPersistentContainer:
+    def __init__(self, bcb_question: BigCodeBench_Question):
+        self.bcb_question = bcb_question
+        
+        # warm up the container with necessary imports
+        self.container = None
+        _, _, container = self.execute_code_sync(self.get_answer_imports()) 
+        
+        self.container = container
+    
+    def get_answer_imports(self) -> str:
+        answer_lines = self.bcb_question.information["answer"].split("\n")
+        import_lines = [line for line in answer_lines if line.startswith("import")]
+        return "\n".join(import_lines)
+
+    @abstractmethod
+    def execute_code_sync(self, code: str):
+        return execute_code_remotely_docker_sync(
+            self.bcb_question.information,
+            code,
+            container=self.container,
+        )
+        
+    async def execute_code_async(self, code: str):
+        raise NotImplementedError("This method must be implemented once we have support for async docker")
+
+class BCBModalPersistentContainer(BCBPersistentContainer):
+    bcb_question: BigCodeBench_Question
+
+    def __init__(self, bcb_question: BigCodeBench_Question):
+        super().__init__(bcb_question)
+    
+    async def execute_code(self, code: str):
+        pass
+
+class BCBDockerPersistentContainer(BCBPersistentContainer):
+    pass
 
 class BCBEngine:
     backend: Literal["docker", "modal"] = "docker"
     bcb_question: BigCodeBench_Question
-
+    persistent_container: Type[BCBPersistentContainer]
+    
     def __init__(
         self,
         bcb_question: BigCodeBench_Question,
@@ -79,6 +119,16 @@ class BCBEngine:
     ):
         self.bcb_question = bcb_question
         self.backend = backend
+        if backend == "docker":
+            self.persistent_container = BCBDockerPersistentContainer(
+                bcb_question=bcb_question
+            )
+        elif backend == "modal":
+            self.persistent_container = BCBModalPersistentContainer(
+                bcb_question=bcb_question
+            )
+        else:
+            raise ValueError(f"Invalid backend: {backend}")
 
     def temp_code_hack(self, headless_submission: str):
         # TEMP HACK
@@ -88,20 +138,35 @@ class BCBEngine:
             headless_submission = "\n".join(lines[(i + 1) :])
         return headless_submission
 
-    async def execute_final_submission_against_hidden_tests(self, final_submission):
+    async def execute_final_submission_against_hidden_tests_async(self, final_submission):
         final_submission = self.temp_code_hack(final_submission)
         all_unique_imports, imports_snippet = self.get_imports()
         if self.backend == "docker":
-            success, result = await execute_code_remotely_docker(
+            success, result, container = execute_code_remotely_docker_sync(
                 self.bcb_question.information,
                 final_submission,
-                packages=all_unique_imports,
-            )  # TODO: combine this and the unit testing code ASAP
+            )
         elif self.backend == "modal":
-            success, result = await execute_code_remotely_modal(
+            success, result = await execute_code_remotely_modal_async(
                 self.bcb_question.information,
                 final_submission,
-                packages=all_unique_imports,
+            )
+        else:
+            raise ValueError(f"Invalid backend: {self.backend}")
+        return success, result
+    
+    def execute_final_submission_against_hidden_tests_sync(self, final_submission):
+        final_submission = self.temp_code_hack(final_submission)
+        all_unique_imports, imports_snippet = self.get_imports()
+        if self.backend == "docker":
+            success, result, container = execute_code_remotely_docker_sync(
+                self.bcb_question.information,
+                final_submission,
+            )
+        elif self.backend == "modal":
+            success, result = execute_code_remotely_modal_sync(
+                self.bcb_question.information,
+                final_submission,
             )
         else:
             raise ValueError(f"Invalid backend: {self.backend}")
@@ -128,7 +193,7 @@ class BCBEngine:
                 all_unique_imports.append(package)
         return all_unique_imports, imports_snippet
 
-    async def execute_submission_against_tests(
+    async def execute_submission_against_tests_async(
         self, headless_submission: str, tests: List[BCBUnitTest]
     ):  # Write new docker code for this
         headless_submission = self.temp_code_hack(headless_submission)
@@ -181,7 +246,7 @@ if __name__ == "__main__":
     print(result)
 """
         if self.backend == "docker":
-            results = await execute_code_docker(
+            results = execute_code_docker(
                 script_to_run_by_name="eval.py",
                 scripts_by_name={"eval.py": eval_snippet, "script.py": full_script},
                 python_version="python:3.9-slim",
@@ -215,7 +280,7 @@ if __name__ == "__main__":
                 result = f"Not all tests passed. Results summary: {test_results}. \nExecution logs: {logs}"
             # parse these
         elif self.backend == "modal":
-            results, sterror = await execute_code_modal(
+            results, sterror = await execute_code_modal_async(
                 script_to_run_by_name="eval.py",
                 scripts_by_name={"eval.py": eval_snippet, "script.py": full_script},
                 python_version="3.9",
@@ -231,6 +296,99 @@ if __name__ == "__main__":
         else:
             raise ValueError(f"Invalid backend: {self.backend}")
         return result
+    
+    def execute_submission_against_tests_sync(self, headless_submission: str, tests: List[BCBUnitTest]):
+        headless_submission = self.temp_code_hack(headless_submission)
+        all_unique_imports, imports_snippet = self.get_imports()
+        tests_snippet = f"""
+import unittest
+{imports_snippet}
+class TestCases(unittest.TestCase):
+"""
+        assert len(tests) > 0, "No tests found"
+        for i, test in enumerate(tests):
+            tests_snippet += test.to_python(index=i)
+        assert len(tests_snippet) > 0, "Tests snippet is empty"
+
+        full_script = (
+            self.bcb_question.information["eval_info"]["code_prompt"]
+            + "\n"
+            + headless_submission
+            + "\n"
+            + tests_snippet
+        )
+        location = "/app" if self.backend == "docker" else "/vol"
+        eval_snippet = f"""
+import unittest
+import io
+def test_code():
+    path = "script.py"
+    loader = unittest.TestLoader()
+    suite = loader.discover('{location}', pattern=path)
+    runner = unittest.TextTestRunner()
+    assert suite.countTestCases() != 0, "No tests found in script.py"
+    result = runner.run(suite)
+
+    result_dict = {{
+        "errors": len(result.errors),
+        "failures": len(result.failures),
+        "testsRun": result.testsRun,
+        "wasSuccessful": result.wasSuccessful()
+    }}
+    return result.wasSuccessful(), result_dict
+
+if __name__ == "__main__":
+    success, result = test_code()
+    print("Success:", success)
+    print(result)
+"""
+        if self.backend == "docker":
+            results = execute_code_docker(
+                script_to_run_by_name="eval.py",
+                scripts_by_name={"eval.py": eval_snippet, "script.py": full_script},
+                python_version="python:3.9-slim",
+                packages=all_unique_imports,
+                dir_name="bcb",
+            )
+            logs_pattern = r"([\s\S]*?)(?=Success:)"
+            test_results_pattern = r"Success: (True|False)\s*(\{.*\})"
+
+            logs_match = re.search(logs_pattern, results, re.DOTALL)
+            test_results_match = re.search(test_results_pattern, results, re.DOTALL)
+            if logs_match and test_results_match:
+                logs = logs_match.group(1).strip()
+                success = test_results_match.group(1) == "True"
+                test_results = eval(test_results_match.group(2))
+            else:
+                print("No match found")
+                logs = ""
+                success = False
+                test_results = {}
+            success = (
+                success
+                and test_results["wasSuccessful"]
+                and test_results["testsRun"] > 0
+            )
+            if success:
+                result = "All tests passed"
+            elif logs == "":
+                result = "Running tests resulted in an execution hardfail"
+            else:
+                result = f"Not all tests passed. Results summary: {test_results}. \nExecution logs: {logs}"
+        elif self.backend == "modal":
+            results, sterror = execute_code_modal_sync(
+                script_to_run_by_name="eval.py",
+                scripts_by_name={"eval.py": eval_snippet, "script.py": full_script},
+                python_version="3.9",
+                packages=all_unique_imports,
+                dir_name="bcb",
+                verbose=True,
+            )
+            result = "ERROR:" + results.split("ERROR:")[1].strip() if "ERROR:" in results else results
+        else:
+            raise ValueError(f"Invalid backend: {self.backend}")
+        return result
+        
 
 
 class BCBAgentComputerInterface(AgentComputerInterface):
@@ -242,11 +400,13 @@ class BCBAgentComputerInterface(AgentComputerInterface):
     final_submission: str
     final_success: bool
     terminated: bool
+    synchronous: bool
 
-    def __init__(self, bcb_backend: BCBEngine):
+    def __init__(self, bcb_backend: BCBEngine, synchronous: bool = False):
         self.unit_tests = {}
         self.current_solution = CurrentSolution(lines=[])
         self.bcb_backend = bcb_backend
+        self.synchronous = synchronous
         self.actions = [
             ACIAction(
                 action_name="edit_submission",
@@ -286,40 +446,80 @@ class BCBUnitTest(BaseModel):
                 action_description="Remove a unit test",
                 action_context="Remove a unit test",
                 transform=Transform(callable=self.remove_unit_test, type="sync"),
-            ),
-            ACIAction(
+            )
+        ] + self.get_submission_actions()
+        self.final_success = False
+        self.final_submission = None
+        self.terminated = False
+
+    def get_submission_actions(self):
+        if self.synchronous:
+            test = ACIAction(
                 action_name="test_submission",
                 action_arg_spec={},
                 action_description="Test the submission",
                 action_context="Test the submission",
                 transform=Transform(
-                    callable=self._execute_submission_against_tests, type="async"
+                    callable=self._execute_submission_against_tests_sync, type="sync"
                 ),
-            ),
-            ACIAction(
+            )
+            submit = ACIAction(
                 action_name="submit_solution",
                 action_arg_spec={},
                 action_description="Submit the solution",
                 action_context="Submit the solution",
-                transform=Transform(callable=self._submit_solution, type="async"),
-            ),
-        ]
-        self.final_success = False
-        self.final_submission = None
-        self.terminated = False
+                transform=Transform(callable=self._submit_solution_sync, type="sync"),
+            )
+            return [test, submit]
+        
+        else:
+            test = ACIAction(
+                action_name="test_submission",
+                action_arg_spec={},
+                action_description="Test the submission",
+                action_context="Test the submission",
+                transform=Transform(
+                    callable=self._execute_submission_against_tests_async, type="async"
+                ),
+            )
+            submit = ACIAction(
+                action_name="submit_solution",
+                action_arg_spec={},
+                action_description="Submit the solution",
+                action_context="Submit the solution",
+                transform=Transform(callable=self._submit_solution_async, type="async")
+            )
+            return [test, submit]
 
-    async def accept_delta(self, action_name: str, action_args: Dict):
+
+    async def accept_delta_async(self, action_name: str, action_args: Dict):
         action = next(
             (action for action in self.actions if action.action_name == action_name),
             None,
         )
         if action is None:
             raise ValueError(f"Action {action_name} not found")
-        result = await action._act(action_args)
+        result = await action._act_async(action_args)
         return result
-
-    async def _execute_submission_against_tests(self):
-        results = await self.bcb_backend.execute_submission_against_tests(
+    
+    def accept_delta_sync(self, action_name: str, action_args: Dict):
+        action = next(
+            (action for action in self.actions if action.action_name == action_name),
+            None,
+        )
+        if action is None:
+            raise ValueError(f"Action {action_name} not found")
+        result = action._act_sync(action_args)
+        return result
+    
+    async def _execute_submission_against_tests_async(self):
+        results = await self.bcb_backend.execute_submission_against_tests_async(
+            self.current_solution.for_execution(), list(self.unit_tests.values())
+        )
+        return results
+    
+    def _execute_submission_against_tests_sync(self):
+        results = self.bcb_backend.execute_submission_against_tests_sync(
             self.current_solution.for_execution(), list(self.unit_tests.values())
         )
         return results
@@ -350,11 +550,11 @@ class BCBUnitTest(BaseModel):
         except Exception as e:
             return f"Failed to remove unit test: {e}"
 
-    async def _submit_solution(self):
+    async def _submit_solution_async(self):
         (
             tests_ran,
             result,
-        ) = await self.bcb_backend.execute_final_submission_against_hidden_tests(
+        ) = await self.bcb_backend.execute_final_submission_against_hidden_tests_async(
             self.current_solution.for_execution()
         )
         if result["testsRun"] == 0:
@@ -364,6 +564,16 @@ class BCBUnitTest(BaseModel):
         self.final_submission = self.current_solution.for_execution()
         self.final_success = success
         return f"Solution submitted successfully, Success: {success}"
+    
+    def _submit_solution_sync(self):
+        (
+            tests_ran,
+            result,
+        ) = self.bcb_backend.execute_final_submission_against_hidden_tests_sync(
+            self.current_solution.for_execution()
+        )
+        if result["testsRun"] == 0:
+            print("Warning: No final tests ran")
 
     def check_termination(self):
         return self.final_success is not False or self.final_submission is not None

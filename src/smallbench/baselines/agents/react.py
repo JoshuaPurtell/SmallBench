@@ -9,7 +9,7 @@ from apropos.src.core.lms.cost import CostMonitor
 REACT_LOOKBACK = 5
 
 
-class ReAct(BaseModel):
+class ReactResponse(BaseModel):
     reasoning: str
     action: str
     action_args: Dict[str, Any]
@@ -43,15 +43,15 @@ class SimpleReActLanguageAgent(Agent):
         ]
         return "\n".join(react_history), "\n".join(obs_history)
 
-    async def act(self):
+    def _prepare_messages(self):
         actions_snippet = ""
         for action_name, action_info in self.contexts["actions"].items():
-            action_info_snippet = ""
-            for key, value in action_info.items():
-                action_info_snippet += f"<{key}>\n{value}\n</{key}>\n"
-            actions_snippet += (
-                f"<{action_name}>\n{action_info_snippet}\n</{action_name}>\n"
+            action_info_snippet = "".join(
+                f"<{key}>\n{value}\n</{key}>\n"
+                for key, value in action_info.items()
             )
+            actions_snippet += f"<{action_name}>\n{action_info_snippet}\n</{action_name}>\n"
+
         system_message = f"""
 # Premise
 {self.contexts['premise']}
@@ -78,18 +78,62 @@ The environment one step in the past is your current environment.
 # Recent Observations
 {obs_history}
 
-Your next actions / thought: """
-        react_step = await self.lm.async_respond(
-            system_prompt=system_message,
-            user_prompt=user_message,
-            response_model=ReAct,
-        )
+Your response: """
+        return system_message, user_message
+
+    def _process_response(self, react_step, system_message, user_message):
         self.cost_monitor.update_token_counts(
             system_message, user_message, str(react_step.dict())
         )
-
         self.react_history.append(react_step)
         return react_step.action, react_step.action_args
+
+    async def act_async(self):
+        system_message, user_message = self._prepare_messages()
+        try:
+            react_step = await self.lm.async_respond(
+                system_prompt=system_message,
+                user_prompt=user_message,
+                response_model=ReactResponse,
+
+            )
+            # print("System:")
+            # print(system_message)
+            # print("User:")
+            # print(user_message)
+            # print("Response:")
+            #print(react_step.reasoning)
+            if "'await'" in react_step.reasoning:
+                raise Exception("ReAct agent found a coroutine error")
+        except Exception as e:
+            print(f"Error: {e}")
+            print(f"System message: {system_message}")
+            print(f"User message: {user_message}")
+            raise e
+        return self._process_response(react_step, system_message, user_message)
+
+    def act_sync(self):
+        system_message, user_message = self._prepare_messages()
+        try:
+            react_step = self.lm.sync_respond(
+                system_prompt=system_message,
+                user_prompt=user_message,
+                response_model=ReactResponse,
+            )
+            # print("System:")
+            # print(system_message)
+            # print("User:")
+            # print(user_message)
+            # print("Response:")
+            # print(react_step.reasoning)
+            if "'await'" in react_step.reasoning:
+                raise Exception("ReAct agent found a coroutine error")
+        except Exception as e:
+            print(f"Error: {e}")
+            print(f"System message: {system_message}")
+            print(f"User message: {user_message}")
+            raise e
+        return self._process_response(react_step, system_message, user_message)
 
     def add_observation(self, obs: Dict):
         self.obs_history.append(obs)

@@ -6,7 +6,7 @@ import os
 from typing import Dict
 
 
-async def execute_code_docker(
+def execute_code_docker(
     script_to_run_by_name: str,
     scripts_by_name: Dict[str, str],
     dir_name: str,

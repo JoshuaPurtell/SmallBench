@@ -39,7 +39,7 @@ class ACIAction(BaseModel):
     action_context: str
     transform: Transform
 
-    async def validate_action_args(self, action_args: Dict):
+    def validate_action_args(self, action_args: Dict):
         for arg_name, arg_type in self.action_arg_spec.items():
             if arg_name not in action_args:
                 raise ValueError(
@@ -50,15 +50,20 @@ class ACIAction(BaseModel):
                     f"Action {self.action_name} requires argument {arg_name} to be of type {arg_type}"
                 )
 
-    async def _act(self, action_args: Dict):
+    def _act_sync(self, action_args: Dict):
         try:
-            await self.validate_action_args(action_args)
+            self.validate_action_args(action_args)
+        except Exception as e:
+            return ActionResult(success=False, result=str(e))
+        result = self.transform.callable(**action_args)
+        return ActionResult(success=True, result=result)
+
+    async def _act_async(self, action_args: Dict):
+        try:
+            self.validate_action_args(action_args)
         except Exception as e:
             return ActionResult(success=False, result=str(e))
 
-        if self.transform.type == "async":
-            result = await self.transform.callable(**action_args)
-            return ActionResult(success=True, result=result)
-        else:
-            result = self.transform.callable(**action_args)
-            return ActionResult(success=True, result=result)
+        result = await self.transform.callable(**action_args)
+        return ActionResult(success=True, result=result)
+
