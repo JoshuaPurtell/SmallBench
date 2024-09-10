@@ -59,10 +59,10 @@ TBD
 
 ### BigCodeBench - Agent Harness
 | LM | Number Correct | Success Rate | Sample Size | Avg. Cost Per Run |
-| --- | --- | --- | --- |
-| gpt-4o-2024-08-06 | 8 | 16% | 50 | $0.057
-| deepseek-v2.5 | 5 | 10% | 50 | $0.0029
-| gpt-4o-mini-2024-07-18 | 5 | 10% | 50 | $0.003
-| gemini-1.5-flash-latest | 3 | 06% | 50 | $0.0018
+| --- | --- | --- | --- | --- |
+| gpt-4o-2024-08-06 | 8 | 16% | 50 | $0.057 | 
+| deepseek-v2.5 | 5 | 10% | 50 | $0.0029 |
+| gpt-4o-mini-2024-07-18 | 5 | 10% | 50 | $0.003 |
+| gemini-1.5-flash-latest | 3 | 06% | 50 | $0.0018 | 
 
 Animation credits: [ZZ](https://x.com/mikezangus)
