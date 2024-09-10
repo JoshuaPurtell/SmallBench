@@ -7,7 +7,7 @@ license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "apropos-ai==0.2.23",
+    "apropos-ai==0.2.28",
     "ollama>=0.3.2",
 ]
 classifiers = []

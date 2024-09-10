@@ -1,13 +1,14 @@
 # TODO: use a legit runtime, not python, for orchestration
 
+from typing import Any, Dict, List
+
 from pydantic import BaseModel
-from typing import List, Dict, Any
+
 from apropos import LLM
-from smallbench.baselines.agents.core import Agent
 from apropos.src.core.lms.cost import CostMonitor
+from smallbench.baselines.agents.core import Agent
 
 REACT_LOOKBACK = 5
-
 
 class ReactResponse(BaseModel):
     reasoning: str
@@ -103,8 +104,6 @@ Your response: """
                 raise Exception("ReAct agent found a coroutine error")
         except Exception as e:
             print(f"Error: {e}")
-            print(f"System message: {system_message}")
-            print(f"User message: {user_message}")
             raise e
         return self._process_response(react_step, system_message, user_message)
 
@@ -117,10 +116,13 @@ Your response: """
                 response_model=ReactResponse,
                 multi_threaded=self.multi_threaded,
             )
+            
+            print(react_step.action)
+            print(react_step.reasoning)
+            if "failed" in react_step.reasoning.lower():
+                print("User message: ", user_message)
         except Exception as e:
             print(f"Error: {e}")
-            print(f"System message: {system_message}")
-            print(f"User message: {user_message}")
             raise e
         return self._process_response(react_step, system_message, user_message)
 

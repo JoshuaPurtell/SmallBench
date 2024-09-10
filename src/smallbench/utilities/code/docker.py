@@ -45,6 +45,6 @@ def execute_code_docker(
             container.wait(timeout=60)
             logs = container.logs().decode("utf-8")
         finally:
-            pass
-        #     container.remove()
+            #pass
+            container.remove()
     return logs, container

@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, List, Literal, Type
 import copy
 from matplotlib import backend_bases
 from pydantic import BaseModel
-
+import time
 from apropos.src.bench.bigcodebench.backends.docker import (
     execute_code_remotely_docker_sync,
 )
@@ -73,52 +73,54 @@ async def test_gold_on_split(split: str = "train", indices: List[int] = None):
     print(f"Num total for {split}: {len(gold_scores)}")
 
 
+def score_agent_sync(
+        contexts_for_agent: List[Dict[str, Any]],
+        model_name: str,
+        indices: List[int] = [i for i in range(0,20)]
+):
+    # if not synchronous:
+    #     agent = SimpleReActLanguageAgent(
+    #         lm=LLM(model_name), contexts=contexts_for_agent, multi_threaded=False
+    #     )
+    # else:
+    print("Using synchronous agent")
+    agent = SimpleReActLanguageAgent(
+        lm=LLM(model_name), contexts=contexts_for_agent, multi_threaded=True
+    )
+    agent_benchmark = BCB_AgentBenchmark(backend="docker")
+
+    t0 = time.time()
+    agent_performance, agent_cost = agent_benchmark.score_agent_sync(agent, split="train", indices=indices, verbose=False, use_persistent_container=False)
+    # else:
+    #     agent_performance, agent_cost = agent_benchmark.score_agent_async(agent, split="train", indices=indices, verbose=False)
+    
+    t1 = time.time()
+    print(f"Time taken: {t1-t0} seconds")
+    print(f"Score for {model_name}: " + str(agent_performance))
+    print(f"Cost for {model_name}: " + str(agent_cost))
+
+async def score_agent_async(
+        contexts_for_agent: List[Dict[str, Any]],
+        model_name: str,
+        indices: List[int] = [i for i in range(0,20)]
+):
+    agent = SimpleReActLanguageAgent(
+        lm=LLM(model_name), contexts=contexts_for_agent, multi_threaded=False
+    )
+    agent_benchmark = BCB_AgentBenchmark(backend="modal")
+    t0 = time.time()
+    agent_performance, agent_cost = await agent_benchmark.score_agent_async(agent, split="train", indices=indices, verbose=False)
+    t1 = time.time()
+    print(f"Time taken: {t1-t0} seconds")
+    print(f"Score for {model_name}: " + str(agent_performance))
+    print(f"Cost for {model_name}: " + str(agent_cost))
+    
+
 if __name__ == "__main__":
     from apropos import LLM
     from smallbench.baselines.agents.react import SimpleReActLanguageAgent
-
-    # asyncio.run(test_gold_on_split(split="train", indices=[i for i in range(0,20)]))
-    # print("Done with gold")
-    backend = "docker"
-    model = "gpt-4o-2024-08-06"
-    # model = "gpt-4o-mini-2024-07-18"  # claude-3-5-sonnet-20240620
-    # model = "gpt-4o-mini-2024-07-18"  # claude-3-5-sonnet-20240620
-
-    benchmark = BigCodeBenchComplete_Benchmark()
+    import asyncio
     contexts = get_contexts_extremely_hacky_please_fix()
-    sync_agent = SimpleReActLanguageAgent(
-        lm=LLM(model), contexts=contexts, multi_threaded=True
-    )
-    async_agent = SimpleReActLanguageAgent(
-        lm=LLM(model), contexts=contexts, multi_threaded=False
-    )
-    agent_benchmark = BCB_AgentBenchmark(backend=backend)
-
-    import time
-
-    t0 = time.time()
-    agent_performance, agent_cost = asyncio.run(
-        agent_benchmark.score_agent_async(
-            async_agent, split="train", indices=[i for i in range(0, 20)], verbose=False
-        )
-    )
-
-    print("Agent performance: ", agent_performance)
-    t1 = time.time()
-    print(f"Time taken: {t1-t0} seconds")
-    print(f"Score for {model}: " + str(agent_performance))
-    print(f"Cost for {model}: " + str(agent_cost))
-
-    # print("Starting sync")
-    # t0 = time.time()
-    # agent_performance, agent_cost = agent_benchmark.score_agent_sync(
-    #     sync_agent, split="train", indices=[i for i in range(0,20)], verbose=False, use_persistent_container=False
-    # )
-    # t1 = time.time()
-    # print(f"Time taken: {t1-t0} seconds")
-    # print(f"Score for {model}: " + str(agent_performance))
-    # print(f"Cost for {model}: " + str(agent_cost))
-    # top is gemini, bottom is DSC
-
-    # Time taken: 43.29315996170044 seconds w/o persistent container for 5 runs in parallel
-    # 160.38296794891357 to run 20 in parallel, syn
+    score_agent_sync(model_name="deepseek-chat",indices=[i for i in range(5,7)], contexts_for_agent=contexts)
+    #asyncio.run(score_agent_async(model_name="gpt-4o-2024-08-06",indices=[i for i in range(0,1)], contexts_for_agent=contexts))
+    # bug - fails on sqlite questions when parallelized using docker multithreading

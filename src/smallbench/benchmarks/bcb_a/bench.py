@@ -170,9 +170,13 @@ class BCB_AgentBenchmark(AgentBenchmark):
                 use_persistent_container=use_persistent_container,
             )
             aci = BCBAgentComputerInterface(backend, synchronous=False)
-            success, submission, dollars = await self.evaluate_async(
-                agent, aci, verbose
-            )
+            try:
+                success, submission, dollars = await self.evaluate_async(
+                    agent, aci, verbose
+                )
+            except Exception as e:
+                print(f"Error: {e}")
+                return False, 0
             return success, dollars
 
         successes_with_dollars = await asyncio.gather(
@@ -209,25 +213,32 @@ class BCB_AgentBenchmark(AgentBenchmark):
                 use_persistent_container=use_persistent_container,
             )
             aci = BCBAgentComputerInterface(backend, synchronous=True)
-            success, submission, dollars = self.evaluate_sync(agent, aci, verbose)
+            try:
+                success, submission, dollars = self.evaluate_sync(agent, aci, verbose)
+            except Exception as e:
+                print(f"Error: {e}")
+                return False, 0
             return success, dollars
 
-        num_cpus = os.cpu_count()
-        batch_size = max(1, num_cpus - 1)
-        num_batches = math.ceil(len(questions) / batch_size)
-        print("N batches: ", num_batches)
-        print("N questions: ", len(questions))
-        successes_with_dollars = []
-        with ThreadPoolExecutor(max_workers=batch_size) as executor:
-            for i in range(num_batches):
-                start = i * batch_size
-                end = min((i + 1) * batch_size, len(questions))
-                batch_questions = questions[start:end]
-                futures = [
-                    executor.submit(evaluate_question, q) for q in batch_questions
-                ]
-                for future in as_completed(futures):
-                    successes_with_dollars.append(future.result())
+        if len(questions) > 1:
+            num_cpus = os.cpu_count()
+            batch_size = max(1, num_cpus - 1)
+            num_batches = math.ceil(len(questions) / batch_size)
+            print("N batches: ", num_batches)
+            print("N questions: ", len(questions))
+            successes_with_dollars = []
+            with ThreadPoolExecutor(max_workers=batch_size) as executor:
+                for i in range(num_batches):
+                    start = i * batch_size
+                    end = min((i + 1) * batch_size, len(questions))
+                    batch_questions = questions[start:end]
+                    futures = [
+                        executor.submit(evaluate_question, q) for q in batch_questions
+                    ]
+                    for future in as_completed(futures):
+                        successes_with_dollars.append(future.result())
+        else:
+            successes_with_dollars = [evaluate_question(questions[0])]
 
         successes = [s for s, d in successes_with_dollars]
         dollars = sum([d for s, d in successes_with_dollars])
