@@ -50,11 +50,6 @@ TBD
 ## Difficult Benchmarks
 TBD
 
-## Caveats
-1. This repository is still under *very* active development.
-2. In particular, certain details regarding the agent computer interface contexts are very much subject to change, and there's a bit of response model instability. Let me know if you run into issues in the issues tab of the GitHub!
-3. For this reason, scores will likely be artificially low until further notice. Don't take them too seriously.
-
 ## Scores
 
 ### BigCodeBench - Agent Harness
