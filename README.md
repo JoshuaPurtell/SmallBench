@@ -55,13 +55,13 @@ TBD
 2. In particular, certain details regarding the agent computer interface contexts are very much subject to change, and there's a bit of response model instability. Let me know if you run into issues in the issues tab of the GitHub!
 3. For this reason, scores will likely be artificially low until further notice. Don't take them too seriously.
 
-## Scores - Extremely Preliminary
+## Scores
 
 ### BigCodeBench - Agent Harness
-| LM | Success Rate (out of 100%) | Sample Size |
-| --- | --- | --- |
-| claude-3-5-sonnet-20240620 | ??? | 30 |
-| gpt-4o-2024-08-06 | 10% | 30 |
-| gpt-4o-mini-2024-07-18 | 13.3% | 30 |
+| LM | Number Correct | Success Rate | Sample Size | Avg. Cost Per Run |
+| --- | --- | --- | --- |
+| gpt-4o-2024-08-06 | 8 | 16% | 50 | $0.057
+| deepseek-v2.5 | 5 | 10% | 50 | $0.0029
+| gpt-4o-mini-2024-07-18 | 5 | 10% | 50 | $0.003
 
 Animation credits: [ZZ](https://x.com/mikezangus)
