@@ -8,7 +8,20 @@ Designed to challenge a broad spectrum of lm-agent abilities.
   <img src="https://raw.githubusercontent.com/JoshuaPurtell/SmallBench/main/assets/data_science_small.gif" width="200" />
 </p>
 
-## Spinning Up
+## Spinning Up - Use
+
+```
+uv add smallbench
+```
+
+or 
+
+```
+pip install smallbench
+```
+
+## Spinning Up - Dev
+
 ```
 uv venv smallbench-dev
 source smallbench-dev/bin/activate
