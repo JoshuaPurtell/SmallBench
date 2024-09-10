@@ -59,4 +59,6 @@ TBD
 | deepseek-v2.5 | 12 | 12% | 100 | $0.0029 |
 | gpt-4o-mini-2024-07-18 | 12 | 12% | 100 | $0.003 |
 | gemini-1.5-flash-latest | 6 | 06% | 100 | $0.0018 | 
+
+
 Animation credits: [ZZ](https://x.com/mikezangus)
