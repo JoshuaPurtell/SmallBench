@@ -52,7 +52,7 @@ TBD
 
 ## Scores
 
-### BigCodeBench - Agent Harness
+### BigCodeBench - Agent Harness (ReAct)
 | LM | Number Correct | Success Rate | Sample Size | Avg. Cost Per Run |
 | --- | --- | --- | --- | --- |
 | gpt-4o-2024-08-06 | 8 | 16% | 50 | $0.057 | 
