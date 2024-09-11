@@ -69,9 +69,11 @@ TBD
 | LM | Number Correct | Success Rate | Sample Size | Avg. Cost Per Run |
 | --- | --- | --- | --- | --- |
 | gpt-4o-2024-08-06 | 17 | 17% | 100 | $0.057 | 
+| gpt-4o-mini-2024-07-18-ft-09-08* | 16 | 16% | 100 | $0.006 |
 | deepseek-v2.5 | 12 | 12% | 100 | $0.0029 |
 | gpt-4o-mini-2024-07-18 | 12 | 12% | 100 | $0.003 |
 | gemini-1.5-flash-latest | 6 | 06% | 100 | $0.0018 | 
 
+* fine-tuned on a minimal subset (500k tokens) of trajectories using a variation of the Filtered Behavioral Cloning approach.
 
 Animation credits: [ZZ](https://x.com/mikezangus)
