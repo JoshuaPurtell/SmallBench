@@ -66,14 +66,16 @@ TBD
 ## Scores
 
 ### BigCodeBench - Agent Harness (ReAct)
-| LM | Number Correct | Success Rate | Sample Size | Avg. Cost Per Run |
+| LM | Number Correct - Train | Number Correct - Test | Sample Size | Avg. Cost Per Run |
 | --- | --- | --- | --- | --- |
-| gpt-4o-2024-08-06 | 17 | 17% | 100 | $0.057 | 
-| gpt-4o-mini-2024-07-18-ft-09-08* | 16 | 16% | 100 | $0.006 |
-| deepseek-v2.5 | 12 | 12% | 100 | $0.0029 |
-| gpt-4o-mini-2024-07-18 | 12 | 12% | 100 | $0.003 |
-| gemini-1.5-flash-latest | 6 | 06% | 100 | $0.0018 | 
+| gpt-4o-mini-2024-07-18-ft* | ??? | 21 | 100 | $0.06 | 
+| gpt-4o-2024-08-06 | 17 | 18 | 100 | $0.057 | 
+| gpt-4o-mini-2024-07-18-ft** | ??? | 13 | 100 | $0.06 | 
+| deepseek-v2.5 | 12 | ??? | 100 | $0.0029 |
+| gpt-4o-mini-2024-07-18 | 12 | 8 | 100 | $0.003 |
+| gemini-1.5-flash-latest | 6 | ??? | 100 | $0.0018 | 
 
-* fine-tuned on a minimal subset (500k tokens) of trajectories using a variation of the Filtered Behavioral Cloning approach.
+* fine-tuned on a minimal subset (<500k tokens) of trajectories using a variation of the Filtered Behavioral Cloning approach (2024-09-17).
+** fine-tuned on a minimal subset (<500k tokens) of trajectories using a variation of the Filtered Behavioral Cloning approach (2024-09-08).
 
 Animation credits: [ZZ](https://x.com/mikezangus)
