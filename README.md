@@ -73,7 +73,7 @@ TBD
 | gpt-4o-mini-2024-07-18-ft** | ??? | 13 | 100 | $0.006 | 
 | deepseek-v2.5 | 12 | ??? | 100 | $0.0029 |
 | gpt-4o-mini-2024-07-18 | 12 | 8 | 100 | $0.003 |
-| gemini-1.5-flash-latest | 6 | ??? | 100 | $0.0018 | 
+| gemini-1.5-flash-latest | 6 | 7 | 100 | $0.0018 | 
 
 - "*" fine-tuned on a minimal subset (<500k tokens) of trajectories using a variation of the Filtered Behavioral Cloning approach (2024-09-17).
 - "**" fine-tuned on a minimal subset (<500k tokens) of trajectories using a variation of the Filtered Behavioral Cloning approach (2024-09-08).
