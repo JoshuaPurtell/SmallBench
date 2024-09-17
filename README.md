@@ -68,9 +68,9 @@ TBD
 ### BigCodeBench - Agent Harness (ReAct)
 | LM | Number Correct - Train | Number Correct - Test | Sample Size | Avg. Cost Per Run |
 | --- | --- | --- | --- | --- |
-| gpt-4o-mini-2024-07-18-ft* | ??? | 21 | 100 | $0.06 | 
+| gpt-4o-mini-2024-07-18-ft* | ??? | 21 | 100 | $0.006 | 
 | gpt-4o-2024-08-06 | 17 | 18 | 100 | $0.057 | 
-| gpt-4o-mini-2024-07-18-ft** | ??? | 13 | 100 | $0.06 | 
+| gpt-4o-mini-2024-07-18-ft** | ??? | 13 | 100 | $0.006 | 
 | deepseek-v2.5 | 12 | ??? | 100 | $0.0029 |
 | gpt-4o-mini-2024-07-18 | 12 | 8 | 100 | $0.003 |
 | gemini-1.5-flash-latest | 6 | ??? | 100 | $0.0018 | 
