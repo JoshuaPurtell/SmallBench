@@ -2,10 +2,12 @@ from setuptools import find_packages, setup
 
 setup(
     name="smallbench",
-    version="0.1.10",
+    version="0.2.27",
     packages=find_packages(),
     install_requires=[
-        "apropos-ai==0.2.28",
+        "zyk>=0.2.17",
+        "synth-sdk>=0.2.19"
+        "apropos==0.4.5"
     ],
     author="Josh Purtell",
     author_email="jmvpurtell@gmail.com",
@@ -15,3 +17,4 @@ setup(
     url="https://github.com/JoshuaPurtell/SmallBench",
     license="MIT",
 )
+

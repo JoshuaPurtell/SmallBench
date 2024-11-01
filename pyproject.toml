@@ -1,14 +1,17 @@
 [project]
 name = "smallbench"
-version = "0.1.10"
+version = "0.2.27"
 description = "Small Benchmarks for LM Agents"
 authors = [{name = "Josh Purtell", email = "jmvpurtell@gmail.com"}]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "apropos-ai==0.2.28",
+    "apropos-ai==0.4.5",
     "ollama>=0.3.2",
+    "pylint>=3.3.1",
+    "synth-sdk>=0.2.19",
+    "zyk>=0.2.5",
 ]
 classifiers = []
 
